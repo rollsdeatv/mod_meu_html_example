@@ -129,8 +129,8 @@ base.addEventListener('touchmove', function(e) {
   // só move se saiu do centro
   if (dist < 10) { if (_iv) { clearInterval(_iv); _iv = null; } return; }
 
-  var dir  = _getDir(dx, dy); 
-  var step = '' + Math.max(1, Math.round(dist / maxD * 10)); // 1-10
+  var dir  = _getDir(dx, dy);
+  var step = '' + Math.max(1, Math.round(dist / maxD * 5)); // 1-5
 
   if (!_iv || _iv._dir !== dir) {
     if (_iv) clearInterval(_iv);
