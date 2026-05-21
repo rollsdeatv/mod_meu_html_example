@@ -41,7 +41,7 @@ body { background:transparent; }
   background:linear-gradient(145deg,#242440,#181830);
   border:1px solid rgba(200,168,75,.25);
   border-radius:10px; display:flex; align-items:center; justify-content:center;
-  cursor:pointer; color:#c8a84b; font-size:22px; transition:all .1s;
+  cursor:pointer; color:#c8a84b; font-size:22px; transition:all .1s; touch-action:none;
 }
 .btn:active { transform:scale(.88); background:linear-gradient(145deg,#c8a84b,#8a6e28); color:#0f0f1e; }
 .btn-center {
@@ -78,6 +78,8 @@ body { background:transparent; }
   <div id='pos-display'>x=0  y=0</div>
 </div>
 <script>
+document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+document.addEventListener('selectstart', function(e){ e.preventDefault(); });
 var _iv = null;
 function _startMove(dir) {
   _gs2call('move', dir);
