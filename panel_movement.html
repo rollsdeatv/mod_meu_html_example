@@ -129,14 +129,20 @@ base.addEventListener('touchmove', function(e) {
   // só move se saiu do centro
   if (dist < 10) { if (_iv) { clearInterval(_iv); _iv = null; } return; }
 
-  var dir  = _getDir(dx, dy);
-  var step = '' + Math.max(1, Math.round(dist / maxD * 5)); // 1-5
+  // normaliza para magnitude constante (evita diagonal mais rápida)
+  var norm = dist > 0 ? dist : 1;
+  var nx = dx / norm; // vetor unitário
+  var ny = dy / norm;
+  var speed = dist / maxD * 5; // 0-5
+  var sx = '' + Math.round(nx * speed);
+  var sy = '' + Math.round(ny * speed);
+  var key = sx + ',' + sy;
 
-  if (!_iv || _iv._dir !== dir) {
+  if (!_iv || _iv._key !== key) {
     if (_iv) clearInterval(_iv);
-    _gs2call(dir, step);
-    _iv = setInterval(function(){ _gs2call(dir, step); }, 120);
-    _iv._dir = dir;
+    _gs2call('move', key);
+    _iv = setInterval(function(){ _gs2call('move', key); }, 120);
+    _iv._key = key;
   }
 }, { passive: false });
 
