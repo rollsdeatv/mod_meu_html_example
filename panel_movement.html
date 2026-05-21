@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8'>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; }
+body { background:transparent; }
+#gs2pad {
+  background:linear-gradient(160deg,#0f0f1e,#1a1228);
+  border:1.5px solid #c8a84b;
+  border-radius:18px;
+  padding:18px 20px 16px;
+  box-shadow:0 0 40px rgba(200,168,75,.25),0 12px 40px rgba(0,0,0,.85);
+  min-width:200px;
+  color:#f0f0f0;
+  font-family:Georgia,serif;
+}
+#drag-handle {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:16px; padding-bottom:10px;
+  border-bottom:1px solid rgba(200,168,75,.2);
+  cursor:grab;
+}
+#drag-handle .title {
+  color:#c8a84b; font-size:12px; letter-spacing:3px; text-transform:uppercase;
+}
+#close-btn {
+  width:22px; height:22px; border-radius:50%;
+  background:rgba(255,60,60,.15); border:1px solid rgba(255,60,60,.4);
+  color:#ff6060; font-size:14px; line-height:22px; text-align:center; cursor:pointer;
+  transition:all .15s;
+}
+#close-btn:active { background:rgba(255,60,60,.5); transform:scale(.9); }
+.dpad {
+  display:grid;
+  grid-template-columns:52px 52px 52px;
+  grid-template-rows:52px 52px 52px;
+  gap:5px; margin:0 auto; width:166px;
+}
+.btn {
+  background:linear-gradient(145deg,#242440,#181830);
+  border:1px solid rgba(200,168,75,.25);
+  border-radius:10px; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:#c8a84b; font-size:22px; transition:all .1s;
+}
+.btn:active { transform:scale(.88); background:linear-gradient(145deg,#c8a84b,#8a6e28); color:#0f0f1e; }
+.btn-center {
+  background:linear-gradient(145deg,#1e1030,#140a22);
+  border-color:rgba(140,80,220,.4); color:#a060ff; font-size:18px;
+}
+.btn-center:active { background:linear-gradient(145deg,#8040cc,#5020aa); color:#fff; }
+.btn-empty { background:transparent; border:none; pointer-events:none; }
+#pos-display {
+  margin-top:13px; text-align:center;
+  color:rgba(200,168,75,.5); font-family:monospace; font-size:11px;
+  letter-spacing:1px; padding-top:10px;
+  border-top:1px solid rgba(200,168,75,.12);
+}
+</style>
+</head>
+<body>
+<div id='gs2pad' data-gs2drag>
+  <div id='drag-handle' data-gs2drag>
+    <div class='title'>&#9876; movement</div>
+    <div id='close-btn'>&#10005;</div>
+  </div>
+  <div class='dpad'>
+    <div class='btn-empty'></div>
+    <div class='btn' id='btn-up'>&#9650;</div>
+    <div class='btn-empty'></div>
+    <div class='btn' id='btn-left'>&#9664;</div>
+    <div class='btn btn-center' id='btn-center'>&#9679;</div>
+    <div class='btn' id='btn-right'>&#9654;</div>
+    <div class='btn-empty'></div>
+    <div class='btn' id='btn-down'>&#9660;</div>
+    <div class='btn-empty'></div>
+  </div>
+  <div id='pos-display'>x=0  y=0</div>
+</div>
+<script>
+var _iv = null;
+function _startMove(dir) {
+  _gs2call('move', dir);
+  _iv = setInterval(function(){ _gs2call('move', dir); }, 120);
+}
+function _stopMove() { if (_iv) { clearInterval(_iv); _iv = null; } }
+function _bindBtn(id, dir) {
+  var b = document.getElementById(id);
+  b.addEventListener('touchstart',  function(e){ e.preventDefault(); _startMove(dir); }, {passive:false});
+  b.addEventListener('touchend',    _stopMove);
+  b.addEventListener('touchcancel', _stopMove);
+}
+_bindBtn('btn-up',    'up');
+_bindBtn('btn-down',  'down');
+_bindBtn('btn-left',  'left');
+_bindBtn('btn-right', 'right');
+document.getElementById('btn-center').addEventListener('touchstart', function(e){ e.preventDefault(); _gs2call('stop',''); }, {passive:false});
+document.getElementById('close-btn').addEventListener('touchstart',  function(e){ e.preventDefault(); _gs2call('close',''); }, {passive:false});
+document.addEventListener('touchend',    _stopMove);
+document.addEventListener('touchcancel', _stopMove);
+window.addEventListener('gs2event', function(e) {
+  if (e.detail.name === 'pos') document.getElementById('pos-display').textContent = e.detail.data;
+});
+</script>
+</body>
+</html>
