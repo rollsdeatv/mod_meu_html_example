@@ -9,49 +9,54 @@ body { background:transparent; }
   background:linear-gradient(160deg,#0f0f1e,#1a1228);
   border:1.5px solid #c8a84b;
   border-radius:18px;
-  padding:18px 20px 16px;
+  padding:16px 20px 16px;
   box-shadow:0 0 40px rgba(200,168,75,.25),0 12px 40px rgba(0,0,0,.85);
-  min-width:200px;
+  min-width:220px;
   color:#f0f0f0;
   font-family:Georgia,serif;
 }
 #drag-handle {
   display:flex; align-items:center; justify-content:space-between;
-  margin-bottom:16px; padding-bottom:10px;
+  margin-bottom:14px; padding-bottom:10px;
   border-bottom:1px solid rgba(200,168,75,.2);
   cursor:grab;
 }
-#drag-handle .title {
-  color:#c8a84b; font-size:12px; letter-spacing:3px; text-transform:uppercase;
-}
+#drag-handle .title { color:#c8a84b; font-size:12px; letter-spacing:3px; text-transform:uppercase; }
 #close-btn {
   width:22px; height:22px; border-radius:50%;
   background:rgba(255,60,60,.15); border:1px solid rgba(255,60,60,.4);
   color:#ff6060; font-size:14px; line-height:22px; text-align:center; cursor:pointer;
-  transition:all .15s;
+  transition:all .15s; touch-action:none;
 }
 #close-btn:active { background:rgba(255,60,60,.5); transform:scale(.9); }
-.dpad {
-  display:grid;
-  grid-template-columns:52px 52px 52px;
-  grid-template-rows:52px 52px 52px;
-  gap:5px; margin:0 auto; width:166px;
+#joystick-wrap {
+  display:flex; align-items:center; justify-content:center;
+  padding:8px 0;
 }
-.btn {
-  background:linear-gradient(145deg,#242440,#181830);
-  border:1px solid rgba(200,168,75,.25);
-  border-radius:10px; display:flex; align-items:center; justify-content:center;
-  cursor:pointer; color:#c8a84b; font-size:22px; transition:all .1s; touch-action:none;
+#joystick-base {
+  width:130px; height:130px; border-radius:50%;
+  background:radial-gradient(circle at 40% 35%,#2a2a4a,#0d0d1e);
+  border:2px solid rgba(200,168,75,.3);
+  box-shadow:0 0 20px rgba(0,0,0,.6),inset 0 2px 0 rgba(255,255,255,.05);
+  position:relative; touch-action:none;
 }
-.btn:active { transform:scale(.88); background:linear-gradient(145deg,#c8a84b,#8a6e28); color:#0f0f1e; }
-.btn-center {
-  background:linear-gradient(145deg,#1e1030,#140a22);
-  border-color:rgba(140,80,220,.4); color:#a060ff; font-size:18px;
+#joystick-knob {
+  width:52px; height:52px; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#4a4a7a,#242440);
+  border:1.5px solid rgba(200,168,75,.6);
+  box-shadow:0 0 14px rgba(200,168,75,.35),0 4px 12px rgba(0,0,0,.6);
+  position:absolute;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  transition:box-shadow .1s;
+  pointer-events:none;
 }
-.btn-center:active { background:linear-gradient(145deg,#8040cc,#5020aa); color:#fff; }
-.btn-empty { background:transparent; border:none; pointer-events:none; }
+#joystick-knob.active {
+  box-shadow:0 0 22px rgba(200,168,75,.7),0 4px 12px rgba(0,0,0,.6);
+  background:radial-gradient(circle at 35% 30%,#6a6aaa,#3a3a60);
+}
 #pos-display {
-  margin-top:13px; text-align:center;
+  margin-top:12px; text-align:center;
   color:rgba(200,168,75,.5); font-family:monospace; font-size:11px;
   letter-spacing:1px; padding-top:10px;
   border-top:1px solid rgba(200,168,75,.12);
@@ -62,44 +67,86 @@ body { background:transparent; }
 <div id='gs2pad' data-gs2drag>
   <div id='drag-handle' data-gs2drag>
     <div class='title'>&#9876; movement</div>
-    <div id='close-btn'>&#10005;</div>
+    <div id='close-btn' data-gs2nodrag>&#10005;</div>
   </div>
-  <div class='dpad'>
-    <div class='btn-empty'></div>
-    <div class='btn' id='btn-up'>&#9650;</div>
-    <div class='btn-empty'></div>
-    <div class='btn' id='btn-left'>&#9664;</div>
-    <div class='btn btn-center' id='btn-center'>&#9679;</div>
-    <div class='btn' id='btn-right'>&#9654;</div>
-    <div class='btn-empty'></div>
-    <div class='btn' id='btn-down'>&#9660;</div>
-    <div class='btn-empty'></div>
+  <div id='joystick-wrap'>
+    <div id='joystick-base' data-gs2nodrag>
+      <div id='joystick-knob'></div>
+    </div>
   </div>
   <div id='pos-display'>x=0  y=0</div>
 </div>
 <script>
 document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
 document.addEventListener('selectstart', function(e){ e.preventDefault(); });
-var _iv = null;
-function _startMove(dir) {
-  _gs2call('move', dir);
-  _iv = setInterval(function(){ _gs2call('move', dir); }, 120);
+
+var base  = document.getElementById('joystick-base');
+var knob  = document.getElementById('joystick-knob');
+var baseR = base.offsetWidth / 2;   // raio da base
+var knobR = knob.offsetWidth / 2;   // raio do knob
+var maxD  = baseR - knobR - 4;      // distância max do centro
+
+var _iv = null, _active = false, _cx = 0, _cy = 0;
+
+function _stopMove() {
+  if (_iv) { clearInterval(_iv); _iv = null; }
+  knob.style.transform = 'translate(-50%,-50%)';
+  knob.classList.remove('active');
+  _active = false;
+  _gs2call('stop', '');
 }
-function _stopMove() { if (_iv) { clearInterval(_iv); _iv = null; } }
-function _bindBtn(id, dir) {
-  var b = document.getElementById(id);
-  b.addEventListener('touchstart',  function(e){ e.preventDefault(); _startMove(dir); }, {passive:false});
-  b.addEventListener('touchend',    _stopMove);
-  b.addEventListener('touchcancel', _stopMove);
+
+function _getDir(dx, dy) {
+  var angle = Math.atan2(dy, dx) * 180 / Math.PI; // -180 a 180
+  if (angle >= -45 && angle < 45)   return 'right';
+  if (angle >= 45  && angle < 135)  return 'down';
+  if (angle >= 135 || angle < -135) return 'left';
+  return 'up';
 }
-_bindBtn('btn-up',    'up');
-_bindBtn('btn-down',  'down');
-_bindBtn('btn-left',  'left');
-_bindBtn('btn-right', 'right');
-document.getElementById('btn-center').addEventListener('touchstart', function(e){ e.preventDefault(); _gs2call('stop',''); }, {passive:false});
-document.getElementById('close-btn').addEventListener('touchstart',  function(e){ e.preventDefault(); _gs2call('close',''); }, {passive:false});
-document.addEventListener('touchend',    _stopMove);
-document.addEventListener('touchcancel', _stopMove);
+
+base.addEventListener('touchstart', function(e) {
+  e.preventDefault();
+  var t = e.touches[0];
+  var r = base.getBoundingClientRect();
+  _cx = r.left + baseR; _cy = r.top + baseR;
+  _active = true;
+  knob.classList.add('active');
+}, { passive: false });
+
+base.addEventListener('touchmove', function(e) {
+  e.preventDefault();
+  if (!_active) return;
+  var t = e.touches[0];
+  var dx = t.clientX - _cx;
+  var dy = t.clientY - _cy;
+  var dist = Math.sqrt(dx*dx + dy*dy);
+
+  // clamp dentro da base
+  if (dist > maxD) { dx = dx/dist*maxD; dy = dy/dist*maxD; dist = maxD; }
+
+  knob.style.transform = 'translate(calc(-50% + ' + dx + 'px), calc(-50% + ' + dy + 'px))';
+
+  // só move se saiu do centro
+  if (dist < 10) { if (_iv) { clearInterval(_iv); _iv = null; } return; }
+
+  var dir  = _getDir(dx, dy);
+  var step = '' + Math.max(1, Math.round(dist / maxD * 10)); // 1-10
+
+  if (!_iv || _iv._dir !== dir) {
+    if (_iv) clearInterval(_iv);
+    _gs2call(dir, step);
+    _iv = setInterval(function(){ _gs2call(dir, step); }, 120);
+    _iv._dir = dir;
+  }
+}, { passive: false });
+
+base.addEventListener('touchend',    _stopMove);
+base.addEventListener('touchcancel', _stopMove);
+
+document.getElementById('close-btn').addEventListener('touchstart', function(e){
+  e.preventDefault(); _gs2call('close', '');
+}, { passive: false });
+
 window.addEventListener('gs2event', function(e) {
   if (e.detail.name === 'pos') document.getElementById('pos-display').textContent = e.detail.data;
 });
